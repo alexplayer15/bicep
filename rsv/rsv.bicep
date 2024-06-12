@@ -20,6 +20,8 @@ var scheduleRunTimes = [
   '2017-01-26T05:30:00Z'
 ]
 
+param existingVirtualMachinesResourceGroup string = 'rg-alexp'
+
 resource recoveryServicesVault 'Microsoft.RecoveryServices/vaults@2022-02-01' = {
   name: vaultName
   location: location
@@ -112,3 +114,23 @@ resource backupPolicy 'Microsoft.RecoveryServices/vaults/backupPolicies@2021-03-
     timeZone: 'UTC'
   }
 }
+
+var backupFabric = 'Azure'
+var protectedItemType = 'Microsoft.ClassicCompute/virtualMachines'
+var v2VmContainer = 'iaasvmcontainer;iaasvmcontainerv2;'
+var v2Vm = 'vm;iaasvmcontainerv2;'
+param existingVirtualMachines array
+
+
+resource protectedItems 'Microsoft.RecoveryServices/vaults/backupFabrics/protectionContainers/protectedItems@2021-03-01' = [for item in existingVirtualMachines: {
+  name: '${vaultName}/${backupFabric}/${v2VmContainer}${existingVirtualMachinesResourceGroup};${item}/${v2Vm}${existingVirtualMachinesResourceGroup};${item}'
+  location: location
+  properties: {
+    protectedItemType: protectedItemType
+    policyId: backupPolicy.id
+    sourceResourceId: resourceId(subscription().subscriptionId, existingVirtualMachinesResourceGroup, 'Microsoft.Compute/virtualMachines', item)
+  }
+  dependsOn: [
+    recoveryServicesVault
+  ]
+}]

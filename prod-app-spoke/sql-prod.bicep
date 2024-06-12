@@ -11,10 +11,13 @@ param subnet2Id string
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
+param appProdVirtualNetworkId string
+param coreVirtualNetworkId string
+
 var sqlServerName = 'sqlserverProd${uniqueString(resourceGroup().id)}'
 var databaseName = '${sqlServerName}/sample-db'
 var privateEndpointName = 'sqlDbPrivateEndpointProd'
-var privateDnsZoneName = 'privatelink${environment().suffixes.sqlServerHostname}'
+var sqlPrivateDnsZoneName = 'privatelink${environment().suffixes.sqlServerHostname}'
 var pvtEndpointDnsGroupName = 'mydnsgroupname'
 
 
@@ -74,8 +77,8 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2021-05-01' = {
   }
 }
 
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
-  name: privateDnsZoneName
+resource sqlPrivateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
+  name: sqlPrivateDnsZoneName
 }
 
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2020-03-01' = {
@@ -86,9 +89,33 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
       {
         name: 'config1'
         properties: {
-          privateDnsZoneId: privateDnsZone.id
+          privateDnsZoneId: sqlPrivateDnsZone.id
         }
       }
     ]
+  }
+}
+
+resource sqlPrivateDnsZoneProdLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  parent: sqlPrivateDnsZone
+  name: '${sqlPrivateDnsZoneName}-prodLink'
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: appProdVirtualNetworkId
+    }
+  }
+}
+
+resource sqlPrivateDnsZoneCoreLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  parent: sqlPrivateDnsZone
+  name: '${sqlPrivateDnsZoneName}-coreLink'
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: coreVirtualNetworkId
+    }
   }
 }

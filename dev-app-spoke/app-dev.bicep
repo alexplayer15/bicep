@@ -68,7 +68,7 @@ param privateLinkConnectionName string = 'PrivateEndpointLink1'
 param privateDnsGroupName string = 'mydnsgroupname'
 
 var webapp_dns_name = '.azurewebsites.net'
-var privateDNSZoneName = 'privatelink.azurewebsites.net'
+var privateDnsZoneAppName = 'privatelink.azurewebsites.net'
 var SKU_tier = 'PremiumV2'
 
 resource appDevVirtualNetwork 'Microsoft.Network/virtualNetworks@2020-06-01' = {
@@ -177,7 +177,7 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2020-06-01' = {
 }
 
 resource privateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
-  name: privateDNSZoneName
+  name: privateDnsZoneAppName
 }
 
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2020-03-01' = {
@@ -192,6 +192,18 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
         }
       }
     ]
+  }
+}
+
+resource appPrivateDnsZoneProdVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  name: '${privateDnsZoneAppName}-devLink'
+  parent: privateDnsZone
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: appDevVirtualNetwork.id
+    }
   }
 }
 

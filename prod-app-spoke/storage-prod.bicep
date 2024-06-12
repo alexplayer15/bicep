@@ -10,8 +10,6 @@ param storagePleBlobName string = 'blobPrivLinkProd'
 
 @description('Resource ID of the subnet')
 param storageSubnetId string
-
-
 @allowed([
   'Standard_LRS'
   'Standard_ZRS'
@@ -25,6 +23,10 @@ param storageSubnetId string
 
 @description('Storage SKU')
 param storageSkuName string = 'Standard_LRS'
+
+param appProdVirtualNetworkId string
+
+param coreVirtualNetworkId string
 
 var storageNameCleaned = replace(storageName, '-', '')
 
@@ -95,7 +97,7 @@ resource storagePrivateEndpointBlob 'Microsoft.Network/privateEndpoints@2022-01-
   }
 }
 
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
+resource blobPrivateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
   name:  blobPrivateDnsZoneName
 }
 
@@ -107,10 +109,34 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
       {
         name: 'config1'
         properties: {
-          privateDnsZoneId: privateDnsZone.id
+          privateDnsZoneId: blobPrivateDnsZone.id
         }
       }
     ]
+  }
+}
+
+resource blobPrivateDnsZoneProdVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  name: '${blobPrivateDnsZoneName}-prodLink'
+  parent: blobPrivateDnsZone
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: appProdVirtualNetworkId
+    }
+  }
+}
+
+resource blobPrivateDnsZoneCoreVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  name: '${blobPrivateDnsZoneName}-coreLink'
+  parent: blobPrivateDnsZone
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: coreVirtualNetworkId
+    }
   }
 }
 

@@ -25,6 +25,8 @@ param storageSubnetId string
 @description('Storage SKU')
 param storageSkuName string = 'Standard_LRS'
 
+param appDevVirtualNetworkId string
+
 var storageNameCleaned = replace(storageName, '-', '')
 
 var blobPrivateDnsZoneName = 'privatelink.blob.${environment().suffixes.storage}'
@@ -94,7 +96,7 @@ resource storagePrivateEndpointBlob 'Microsoft.Network/privateEndpoints@2022-01-
   }
 }
 
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
+resource blobPrivateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
   name:  blobPrivateDnsZoneName
 }
 
@@ -106,10 +108,22 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
       {
         name: 'config1'
         properties: {
-          privateDnsZoneId: privateDnsZone.id
+          privateDnsZoneId: blobPrivateDnsZone.id
         }
       }
     ]
+  }
+}
+
+resource blobPrivateDnsZoneDevVnetLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  name: '${blobPrivateDnsZoneName}-devLink'
+  parent: blobPrivateDnsZone
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: appDevVirtualNetworkId
+    }
   }
 }
 

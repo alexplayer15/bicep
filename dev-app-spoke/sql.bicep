@@ -11,10 +11,12 @@ param subnet2Id string
 @description('Location for all resources.')
 param location string = resourceGroup().location
 
+param appDevVirtualNetworkId string
+
 var sqlServerName = 'sqlserver${uniqueString(resourceGroup().id)}'
 var databaseName = '${sqlServerName}/sample-db'
 var privateEndpointName = 'myPrivateEndpoint'
-var privateDnsZoneName = 'privatelink${environment().suffixes.sqlServerHostname}'
+var sqlPrivateDnsZoneName = 'privatelink${environment().suffixes.sqlServerHostname}'
 var pvtEndpointDnsGroupName = 'mydnsgroupname'
 
 
@@ -74,11 +76,11 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2021-05-01' = {
   }
 }
 
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
-  name: privateDnsZoneName
+resource sqlPrivateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
+  name: sqlPrivateDnsZoneName
 }
 
-resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2020-03-01' = {
+resource sqlPrivateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2020-03-01' = {
   parent: privateEndpoint
   name: pvtEndpointDnsGroupName
   properties: {
@@ -86,10 +88,22 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
       {
         name: 'config1'
         properties: {
-          privateDnsZoneId: privateDnsZone.id
+          privateDnsZoneId: sqlPrivateDnsZone.id
         }
       }
     ]
+  }
+}
+
+resource sqlPrivateDnsZoneDevLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2020-06-01' = {
+  parent: sqlPrivateDnsZone
+  name: '${sqlPrivateDnsZoneName}-devLink'
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: appDevVirtualNetworkId
+    }
   }
 }
 

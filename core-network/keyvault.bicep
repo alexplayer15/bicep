@@ -4,6 +4,8 @@ param virtualNetworkName string
 @description('Spoke subnet name')
 param subnetName string
 
+param coreNetworkId string
+
 param privateEndpointName string = 'keyVaultPrivateEndpoint'
 
 param location string = resourceGroup().location
@@ -11,7 +13,7 @@ param location string = resourceGroup().location
 @description('Link name between your Private Endpoint and Keyvault')
 param privateLinkConnectionName string = 'PrivateEndpointLinkKeyVault'
 
-var privateDNSZoneName = 'privatelink${environment().suffixes.keyvaultDns}'
+var privateKeyVaultDnsZoneName = 'privatelink${environment().suffixes.keyvaultDns}'
 
 resource keyvaultCore 'Microsoft.KeyVault/vaults@2023-07-01' = {
   name: 'kv-bicep-core'
@@ -77,8 +79,8 @@ resource privateEndpoint 'Microsoft.Network/privateEndpoints@2020-06-01' = {
   }
 }
 
-resource privateDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
-  name: privateDNSZoneName
+resource privateKeyVaultDnsZone 'Microsoft.Network/privateDnsZones@2018-09-01' existing = {
+  name: privateKeyVaultDnsZoneName
 }
 
 resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneGroups@2020-03-01' = {
@@ -89,9 +91,21 @@ resource privateDnsZoneGroup 'Microsoft.Network/privateEndpoints/privateDnsZoneG
       {
         name: 'config1'
         properties: {
-          privateDnsZoneId: privateDnsZone.id
+          privateDnsZoneId: privateKeyVaultDnsZone.id
         }
       }
     ]
+  }
+}
+
+resource privateDnsZoneKeyVaultCoreLink 'Microsoft.Network/privateDnsZones/virtualNetworkLinks@2018-09-01' = {
+  parent: privateKeyVaultDnsZone
+  name: '${privateKeyVaultDnsZoneName}-coreLink'
+  location: 'global'
+  properties: {
+    registrationEnabled: false
+    virtualNetwork: {
+      id: coreNetworkId
+    }
   }
 }
